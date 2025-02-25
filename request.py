@@ -814,6 +814,11 @@ async def get_gpt_payload(request, engine, provider):
                     }
                 })
 
+    if payload.get("stream", False) is True :
+        stream_options = payload.get("stream_options", {})
+        if "include_usage" not in stream_options:
+            stream_options["include_usage"] = True
+        payload["stream_options"] = stream_options
     return url, headers, payload
 
 def build_azure_endpoint(base_url, deployment_id, api_version="2024-10-21"):
