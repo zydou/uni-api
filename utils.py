@@ -511,9 +511,11 @@ async def error_handling_wrapper(generator, channel_id, engine, stream, error_tr
         async def new_generator():
             # print("type(first_item)", type(first_item))
             # print("first_item", ensure_string(first_item))
+            logger.info(first_item)
             yield ensure_string(first_item)
             try:
                 async for item in generator:
+                    logger.info(item.encode("utf-8").decode("unicode-escape"))
                     yield ensure_string(item)
             except asyncio.CancelledError:
                 # 客户端断开连接是正常行为，不需要记录错误日志
@@ -881,3 +883,30 @@ def get_engine(provider, endpoint=None, original_model=""):
         stream = False
 
     return engine, stream
+
+from ruamel.yaml.comments import CommentedMap
+
+def merge_headers(original:dict, headers:dict):
+    for k, v in headers.items():
+        if not any(k.lower().startswith(x) for x in ["cf-aig-", "helicone-", "x-portkey-"]):
+            continue
+        if isinstance(v, CommentedMap):  # v is a dict
+            old  = json.loads(original.get(k, "{}"))
+            updated = old | v
+            original[k] = json.dumps(updated)
+            continue
+
+        try:
+            json.loads(v)
+        except json.decoder.JSONDecodeError:
+            original[k] = v
+        except TypeError:
+            original[k] = json.dumps(v)
+        else:
+            data = json.loads(v)
+            if isinstance(data, dict):
+                old  = json.loads(original.get(k, "{}"))
+                updated = old | json.loads(v)
+                original[k] = json.dumps(updated)
+            else:
+                original[k] = v

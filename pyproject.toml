@@ -1,0 +1,25 @@
+[project]
+dependencies = [
+    "aiofiles>=24.1.0",
+    "aiosqlite>=0.21.0",
+    "cryptography>=44.0.2",
+    "fastapi>=0.115.11",
+    "httpx-socks>=0.10.0",
+    "httpx[http2]>=0.28.1",
+    "pillow>=11.1.0",
+    "python-multipart>=0.0.20",
+    "ruamel-yaml>=0.18.10",
+    "sqlalchemy>=2.0.39",
+    "uvicorn>=0.34.0",
+    "watchfiles>=1.0.4",
+]
+name = "uni-api"
+requires-python = ">=3.11"
+version = "0.1.0"
+
+[dependency-groups]
+dev = ["ipdb>=0.13.13"]
+
+[tool.uv]
+environments = ["sys_platform == 'darwin'", "sys_platform == 'linux'"]
+
