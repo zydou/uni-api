@@ -486,6 +486,7 @@ class StatsMiddleware(BaseHTTPMiddleware):
         # 初始化请求信息
         request_info_data = {
             "request_id": request_id,
+            "headers": request.headers,
             "start_time": start_time,
             "endpoint": f"{request.method} {request.url.path}",
             "client_ip": request.client.host,
@@ -495,6 +496,7 @@ class StatsMiddleware(BaseHTTPMiddleware):
             "model": None,
             "success": False,
             "api_key": token,
+            "api_index": api_index,
             "is_flagged": False,
             "text": None,
             "prompt_tokens": 0,
@@ -836,7 +838,16 @@ async def process_request(request: Union[RequestModel, ImageGenerationRequest, A
         logger.info(f"provider: {channel_id:<11} model: {request.model:<22} engine: {engine} role: {role}")
 
     url, headers, payload = await get_payload(request, engine, provider)
-    headers.update(safe_get(provider, "preferences", "headers", default={}))  # add custom headers
+    current_info = request_info.get()
+    # add original http headers
+    raw_headers = dict(current_info["headers"]) or {}
+    raw_headers.pop("host", None)
+    raw_headers.pop("authorization", None)
+    raw_headers.pop("content-length", None)
+    raw_headers.pop("content-type", None)
+    headers.update(raw_headers)
+    headers.update(safe_get(provider, "preferences", "headers", default={}))  # add custom channel headers
+    headers.update(safe_get(app.state.config, "api_keys", current_info["api_index"], "preferences", "headers", default={}))  # add custom api headers
     if is_debug:
         logger.info(url)
         logger.info(json.dumps(headers, indent=4, ensure_ascii=False))
@@ -845,7 +856,7 @@ async def process_request(request: Union[RequestModel, ImageGenerationRequest, A
         else:
             logger.info(json.dumps(payload, indent=4, ensure_ascii=False))
 
-    current_info = request_info.get()
+
 
     provider_timeouts = safe_get(app.state.provider_timeouts, channel_id, default=app.state.provider_timeouts["global_time_out"])
     timeout_value = get_timeout_value(provider_timeouts, original_model)
@@ -856,7 +867,8 @@ async def process_request(request: Union[RequestModel, ImageGenerationRequest, A
     timeout_value = timeout_value * num_matching_providers
     # print("timeout_value", channel_id, timeout_value)
 
-    proxy = safe_get(provider, "preferences", "proxy", default=None)
+    proxy = safe_get(app.state.config, "preferences", "proxy", default=None)  # global proxy
+    proxy = safe_get(provider, "preferences", "proxy", default=proxy)
     # print("proxy", proxy)
 
     try:
@@ -877,6 +889,7 @@ async def process_request(request: Union[RequestModel, ImageGenerationRequest, A
                     first_element = await anext(wrapped_generator)
                     first_element = first_element.lstrip("data: ")
                     first_element = json.loads(first_element)
+                    logger.info(first_element)
                     response = StarletteStreamingResponse(iter([json.dumps(first_element)]), media_type="application/json")
 
             # 更新成功计数和首次响应时间
@@ -1193,7 +1206,7 @@ class ModelRequestHandler:
                 if is_debug:
                     import traceback
                     traceback.print_exc()
-                if auto_retry and status_code != 413:
+                if auto_retry:
                     continue
                 else:
                     return JSONResponse(

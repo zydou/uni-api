@@ -510,9 +510,11 @@ async def error_handling_wrapper(generator, channel_id, engine, stream, error_tr
         async def new_generator():
             # print("type(first_item)", type(first_item))
             # print("first_item", ensure_string(first_item))
+            logger.info(first_item)
             yield ensure_string(first_item)
             try:
                 async for item in generator:
+                    logger.info(item)
                     yield ensure_string(item)
             except asyncio.CancelledError:
                 # 客户端断开连接是正常行为，不需要记录错误日志
