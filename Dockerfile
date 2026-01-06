@@ -1,13 +1,13 @@
-FROM python:3.12-slim AS base
+FROM python:3.12.9-slim@sha256:48a11b7ba705fd53bf15248d1f94d36c39549903c5d59edcfa2f3f84126e7b44 AS base
 ARG UV_PYTHON=/usr/local/bin/python3.12
 RUN --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=from=ghcr.io/astral-sh/uv:0.6,source=/uv,target=/bin/uv \
+    --mount=from=ghcr.io/astral-sh/uv:latest,source=/uv,target=/bin/uv \
     uv venv --relocatable --no-python-downloads --no-cache && \
     uv sync --frozen --no-dev --no-python-downloads --no-cache --no-install-project --no-editable
 
 # Copy the virtualenv into a distroless image
-FROM gcr.io/distroless/cc:latest
+FROM gcr.io/distroless/cc:latest@sha256:0c8eac8ea42a167255d03c3ba6dfad2989c15427ed93d16c53ef9706ea4691df
 ARG CHIPSET_ARCH=x86_64-linux-gnu
 COPY --from=base /usr/local/lib/ /usr/local/lib/
 COPY --from=base /usr/local/bin/python3.12 /usr/local/bin/

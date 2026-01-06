@@ -872,8 +872,6 @@ async def process_request(request: Union[RequestModel, ImageGenerationRequest, A
 
     proxy = safe_get(app.state.config, "preferences", "proxy", default=None)  # global proxy
     proxy = safe_get(provider, "preferences", "proxy", default=proxy)  # provider proxy
-    # print("proxy", proxy)
-
     try:
         async with app.state.client_manager.get_client(timeout_value, url, proxy) as client:
             if request.stream:
